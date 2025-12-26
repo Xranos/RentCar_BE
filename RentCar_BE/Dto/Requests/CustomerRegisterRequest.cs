@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 
-namespace RentCar_BE.Dto
+namespace RentCar_BE.Dto.Requests
 {
-    public class CustomerRegisterDto
+    public class CustomerRegisterRequest
     {
         public string Name { get; set; }
         public string Email { get; set; }

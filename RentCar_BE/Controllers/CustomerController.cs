@@ -1,9 +1,13 @@
-﻿using Microsoft.AspNetCore.Identity.Data;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RentCar_BE.Data;
-using RentCar_BE.Dto;
+using RentCar_BE.Dto.Requests;
+using RentCar_BE.Dto.Responses;
 using RentCar_BE.Models;
+using RentCar_BE.Services;
 
 namespace RentCar_BE.Controllers
 {
@@ -12,9 +16,14 @@ namespace RentCar_BE.Controllers
     public class CustomerController : Controller
     {
         private readonly AppDbContext _context;
-        public CustomerController(AppDbContext appDbContext)
+        private readonly IJwtService _jwtService;
+        private readonly IPasswordHasher<Customer> _passwordHasher;
+
+        public CustomerController(AppDbContext appDbContext, IJwtService jwtService, IPasswordHasher<Customer> passwordHasher)
         {
             _context = appDbContext;
+            _jwtService = jwtService;
+            _passwordHasher = passwordHasher;
         }
 
         private async Task<string> GenerateIdCustomerAsync()
@@ -34,8 +43,9 @@ namespace RentCar_BE.Controllers
 
 
         [HttpPost("register")]
+        [AllowAnonymous]
         public async Task<IActionResult> Register(
-            [FromBody] CustomerRegisterDto request
+            [FromBody] CustomerRegisterRequest request
             )
         {
             var exists = await _context.Customers
@@ -51,11 +61,12 @@ namespace RentCar_BE.Controllers
                 CustomerId = await GenerateIdCustomerAsync(),
                 Name = request.Name,
                 Email = request.Email,
-                Password = request.Password,
                 PhoneNumber = request.PhoneNumber,
                 Address = request.Address,
                 DriverLicenseNumber = request.DriverLicenseNumber,
             };
+
+            customer.Password = _passwordHasher.HashPassword(customer, request.Password);
 
             await _context.Customers.AddAsync(customer);
             await _context.SaveChangesAsync();
@@ -64,20 +75,36 @@ namespace RentCar_BE.Controllers
         }
 
         [HttpPost("login")]
+        [AllowAnonymous]
         public async Task<IActionResult> Login(
-            string email,
-            string password
+            [FromBody] CustomerLoginRequest request
             )
         {
             var customer = await _context.Customers
-                .FirstOrDefaultAsync(c => c.Email == email && c.Password == password);
+                .FirstOrDefaultAsync(c => c.Email == request.Email);
 
             if (customer == null)
             {
-                return Unauthorized("Customer Doesn't Exists!");
+                return Unauthorized("Email or Password is wrong!");
             }
 
-            return Ok("Login Successful");
+            var result = _passwordHasher.VerifyHashedPassword(
+                customer,
+                customer.Password,
+                request.Password
+            );
+
+            if (result == PasswordVerificationResult.Failed)
+            {
+                return Unauthorized("Email or Password is wrong!");
+            }
+
+            var token = _jwtService.GenerateToken(customer);
+
+            return Ok(new CustomerLoginResponse
+            {
+                AccessToken = token,
+            });
         }
 
     }

@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.IdentityModel.Tokens;
 using RentCar_BE.Models;
 using System.IdentityModel.Tokens.Jwt;
@@ -17,8 +18,14 @@ namespace RentCar_BE.Services
         }
 
         public string GenerateToken(Customer customer)
+
         {
-            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtSettings:SecretKey"]!));
+            var key = _configuration["JwtConfig:Key"];
+            if (string.IsNullOrWhiteSpace(key)) {
+                throw new Exception("JWT KEY IS NULL");
+            };
+
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
 
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
@@ -30,11 +37,16 @@ namespace RentCar_BE.Services
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
+            var expiryMinutes = int.TryParse(
+            _configuration["JwtConfig:TokenValidityMin"],
+            out var minutes
+            ) ? minutes : 30;
+
             var token = new JwtSecurityToken(
-               issuer: _configuration["JwtSettings:Issuer"],
-               audience: _configuration["JwtSettings:Audience"],
+               issuer: _configuration["JwtConfig:Issuer"],
+               audience: _configuration["JwtConfig:Audience"],
                claims: claims,
-               expires: DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["JwtSettings:30"])),
+               expires: DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["expiryMinutes"])),
                signingCredentials: credentials
            );
 
