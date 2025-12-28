@@ -26,8 +26,10 @@ namespace RentCar_BE.Controllers
         public async Task<IActionResult> SearchCars(
             [FromQuery]DateTime pickupDate,
             [FromQuery]DateTime returnDate,
+            [FromQuery]int? year,
+            [FromQuery]string? priceSort,
             int page = 1,
-            int pageSize = 10
+            int pageSize = 9
             )
         {
             if (pickupDate >= returnDate)
@@ -40,11 +42,27 @@ namespace RentCar_BE.Controllers
 
             var query = _context.Cars
                 .Include(c => c.CarImages)
-                .Where(c => !rentedCarId.Contains(c.CarId))
-                .Select(c => new CarSearchRequest
+                .Where(c => !rentedCarId.Contains(c.CarId));
+
+            if (year.HasValue)
+            {
+                query = query.Where(c => c.Year == year.Value);
+            }
+
+            if (priceSort == "asc")
+            {
+                query = query.OrderBy(c => c.PricePerDay);
+            }
+            else if (priceSort == "desc")
+            {
+                query = query.OrderByDescending(c => c.PricePerDay);
+            }
+
+            var resultQuery = query.Select(c => new CarSearchRequest
                 {
                     CarId = c.CarId,
                     Name = c.Name,
+                    Year = c.Year,
                     PricePerDay = c.PricePerDay,
                     Images = c.CarImages
                     .Select(i => new CarImageRequest
@@ -54,9 +72,9 @@ namespace RentCar_BE.Controllers
                     .ToList()
                 });
 
-            var totalData = await query.CountAsync();
+            var totalData = await resultQuery.CountAsync();
 
-            var cars = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+            var cars = await resultQuery.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
             return Ok(new
             {

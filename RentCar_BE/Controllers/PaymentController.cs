@@ -34,6 +34,7 @@ namespace RentCar_BE.Controllers
             return $"PAY{nextNumber:000}";
         }
 
+
         [HttpPost("payment")]
         [Authorize]
         public async Task<IActionResult> PaymentTr (

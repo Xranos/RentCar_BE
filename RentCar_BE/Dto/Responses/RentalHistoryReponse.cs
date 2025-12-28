@@ -13,6 +13,6 @@
         public int TotalDays { get; set; }
         public decimal TotalPrice { get; set; }
 
-        public string PaymentStatus { get; set; }
+        public bool PaymentStatus { get; set; }
     }
 }

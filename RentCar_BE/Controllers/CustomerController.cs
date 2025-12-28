@@ -104,6 +104,8 @@ namespace RentCar_BE.Controllers
             return Ok(new CustomerLoginResponse
             {
                 AccessToken = token,
+                Name = customer.Name,
+                Email = customer.Email
             });
         }
 

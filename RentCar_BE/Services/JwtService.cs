@@ -37,18 +37,18 @@ namespace RentCar_BE.Services
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
-            var expiryMinutes = int.TryParse(
-            _configuration["JwtConfig:TokenValidityMin"],
-            out var minutes
-            ) ? minutes : 30;
+            var expiryMinutes = int.TryParse( 
+                _configuration["JwtConfig:TokenValidityMin"],
+                out var minutes
+                ) ? minutes : 30;
 
             var token = new JwtSecurityToken(
-               issuer: _configuration["JwtConfig:Issuer"],
-               audience: _configuration["JwtConfig:Audience"],
-               claims: claims,
-               expires: DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["expiryMinutes"])),
-               signingCredentials: credentials
-           );
+            issuer: _configuration["JwtConfig:Issuer"],
+            audience: _configuration["JwtConfig:Audience"],
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(expiryMinutes),
+            signingCredentials: credentials
+);
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }

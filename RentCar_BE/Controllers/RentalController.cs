@@ -26,7 +26,7 @@ namespace RentCar_BE.Controllers
             var last = await _context.Rentals
                 .Where(r => r.RentalId.StartsWith("RNT"))
                 .OrderByDescending(r => r.RentalId)
-                .Select(r => r.CustomerId)
+                .Select(r => r.RentalId)
                 .FirstOrDefaultAsync();
 
             var nextNumber = 1;
@@ -56,9 +56,11 @@ namespace RentCar_BE.Controllers
 
             var dateConflict = await _context.Rentals.AnyAsync(r =>
                 r.CarId == request.CarId &&
+                r.PaymentStatus == false &&
                 request.PickupDate < r.ReturnDate &&
                 request.ReturnDate > r.RentalDate
-            );
+);
+
 
             if (dateConflict)
                 return BadRequest("Car is already rented in the selected date range!");
@@ -111,11 +113,40 @@ namespace RentCar_BE.Controllers
 
                     TotalDays = (r.ReturnDate - r.RentalDate).Days,
                     TotalPrice = r.TotalPrice,
-                    PaymentStatus = r.PaymentStatus ? "Sudah Dibayar" : "Belum Dibayar"
+                    PaymentStatus = r.PaymentStatus
                 })
                 .ToListAsync();
 
             return Ok(histories);
+        }
+
+        [HttpGet("{rentalId}")]
+        [Authorize]
+        public async Task<IActionResult> GetRentalById(string rentalId)
+        {
+            var customerId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(customerId))
+                return Unauthorized();
+
+            var rental = await _context.Rentals
+                .Include(r => r.Car)
+                .FirstOrDefaultAsync(r =>
+                    r.RentalId == rentalId &&
+                    r.CustomerId == customerId
+                );
+
+            if (rental == null)
+                return NotFound("Rental not found");
+
+            return Ok(new
+            {
+                rentalId = rental.RentalId,
+                carName = rental.Car.Name,
+                pickupDate = rental.RentalDate,
+                returnDate = rental.ReturnDate,
+                totalPrice = rental.TotalPrice,
+                paymentStatus = rental.PaymentStatus
+            });
         }
 
     }
